@@ -76,8 +76,12 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
       await for (final chunk in stream) {
         _addToBuffer(chunk);
         if (_currentBuffer.length >= _bufferSize) {
+          debugPrint(
+              'New Buffer: ${_currentBuffer.toBytes().lengthInBytes} / $_bufferSize');
           _flushBufferToQueue();
         }
+        debugPrint('Last chunk: ${chunk.lengthInBytes / 1024} KB');
+
         _playNextInQueue();
       }
       _flushBufferToQueue(finalFlush: true);
@@ -107,6 +111,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
     _isPlaying = true;
 
     try {
+      debugPrint('Playing chunk: ${nextChunk.lengthInBytes / 1024} KB');
       await _controller?.play(nextChunk);
     } catch (e) {
       debugPrint('Error playing chunk: $e');
