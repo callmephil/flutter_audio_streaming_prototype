@@ -1,7 +1,6 @@
 import 'dart:async';
-import 'dart:typed_data';
 
-import 'package:example/tts_service_web.dart';
+import 'package:example/tts_service_all.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
@@ -33,6 +32,7 @@ class AudioStreamScreen extends StatefulWidget {
 
 class _AudioStreamScreenState extends State<AudioStreamScreen> {
   final openAIKey = 'YOUR API KEY';
+  AudioSource? currentSound;
 
   @override
   void dispose() {
@@ -41,63 +41,54 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
   }
 
   Future<void> _fetchAndPlayAudio() async {
-    final stream = TTSServiceWeb(openAIKey).tts(
-      'https://api.openai.com/v1/audio',
+    final stream = TTSServiceAll(openAIKey).tts(
+      'https://api.openai.com/v1/audio/speech',
       {
         'model': 'tts-1',
         'voice': 'alloy',
         'speed': 1,
-        'input': '''1. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-            2. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-            3. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-            4. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-            5. Lorem ipsum dolor sit amet, consectetur adipiscing elit.''',
+        'input': 'Today is a wonderful day to build something people love!',
         'response_format': 'pcm',
         'stream': true,
       },
     );
 
-    final currentSound = SoLoud.instance.setBufferStream(
+    currentSound = SoLoud.instance.setBufferStream(
       maxBufferSize: 1024 * 1024 * 5, // 2 MB
       sampleRate: 24000,
       channels: Channels.mono,
       pcmFormat: BufferPcmType.s16le,
+      bufferingTimeNeeds: 0.5,
       onBuffering: (isBuffering, handle, time) async {
         debugPrint('buffering');
       },
     );
 
-    int chunkNumber = 0;
-    BytesBuilder data = BytesBuilder();
+    var chunkNumber = 0;
 
-    stream.listen((chunk) async {
-      data.add(chunk);
-
-      try {
-        SoLoud.instance.addAudioDataStream(
-          currentSound,
-          chunk,
-          // Uint8List.fromList(decoded),
-        );
-        if (chunkNumber == 0) {
-          await SoLoud.instance.play(currentSound);
+    stream.listen(
+      (chunk) async {
+        debugPrint('LISTEN $chunkNumber********** ${chunk.length}');
+        try {
+          SoLoud.instance.addAudioDataStream(
+            currentSound!,
+            chunk,
+          );
+          if (chunkNumber == 0) {
+            await SoLoud.instance.play(currentSound!);
+          }
+          chunkNumber++;
+        } on SoLoudPcmBufferFullCppException {
+          debugPrint('pcm buffer full or stream already set '
+              'to be ended');
+        } catch (e) {
+          debugPrint(e.toString());
         }
-        chunkNumber++;
-        print('chunk number: $chunkNumber');
-        print('chunk length: ${chunk.length}');
-      } on SoLoudPcmBufferFullCppException {
-        debugPrint('pcm buffer full or stream already set '
-            'to be ended');
-      } catch (e) {
-        debugPrint(e.toString());
-      }
-    }, onDone: () {
-      // SoLoud.instance
-      //     .loadMem('path', data.toBytes())
-      //     .then((e) => SoLoud.instance.play(e));
-
-      SoLoud.instance.setDataIsEnded(currentSound);
-    });
+      },
+      onDone: () {
+        SoLoud.instance.setDataIsEnded(currentSound!);
+      },
+    );
   }
 
   @override
@@ -107,9 +98,22 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
         title: const Text('Audio Stream Example'),
       ),
       body: Center(
-        child: ElevatedButton(
-          onPressed: _fetchAndPlayAudio,
-          child: const Text('Play Audio'),
+        child: Column(
+          spacing: 10,
+          children: [
+            ElevatedButton(
+              onPressed: _fetchAndPlayAudio,
+              child: const Text('Play Audio'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (currentSound != null) {
+                  await SoLoud.instance.play(currentSound!);
+                }
+              },
+              child: const Text('Play Last Audio'),
+            ),
+          ],
         ),
       ),
     );
