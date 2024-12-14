@@ -1,18 +1,22 @@
 import 'dart:async';
-import 'dart:collection';
 import 'dart:typed_data';
 
-import 'package:example/audio_player_controller.dart';
-import 'package:example/tts_service_web.dart';
+// import 'package:example/tts_service_web.dart';
+import 'package:example/tts_service_mobile.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_soloud/flutter_soloud.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  /// Initialize the player.
+  await SoLoud.instance.init();
+
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
@@ -29,98 +33,71 @@ class AudioStreamScreen extends StatefulWidget {
 }
 
 class _AudioStreamScreenState extends State<AudioStreamScreen> {
-  // TODO: add your open ai key if you want to test
-  final openAIKey = 'YOUR_OPENAI_API_KEY';
-
-  final Queue<Uint8List> _bufferQueue = Queue();
-  final BytesBuilder _currentBuffer = BytesBuilder();
-  bool _isPlaying = false;
-  final int _bufferSize = 64 * 1024; // Adjusted buffer size
-  AudioPlayerController? _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AudioPlayerController(onError: (e, s) {
-      debugPrint('Error: $e');
-    });
-  }
+  final openAIKey = 'YOUR API KEY';
 
   @override
   void dispose() {
-    _controller?.dispose();
+    unawaited(SoLoud.instance.disposeAllSources());
     super.dispose();
   }
 
   Future<void> _fetchAndPlayAudio() async {
-    final stream = TTSServiceWeb(openAIKey).tts(
-      'https://api.openai.com/v1/audio/speech',
+    final stream = await TTSServiceMobile(openAIKey).tts(
       {
         'model': 'tts-1',
         'voice': 'alloy',
         'speed': 1,
-        'input':
-            '''Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.''',
-        'response_format': 'opus',
+        'input': '''1. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            2. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            3. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            4. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            5. Lorem ipsum dolor sit amet, consectetur adipiscing elit.''',
+        'response_format': 'pcm',
         'stream': true,
       },
     );
 
-    try {
-      await for (final chunk in stream) {
-        _addToBuffer(chunk);
-        if (_currentBuffer.length >= _bufferSize) {
-          debugPrint(
-              'New Buffer: ${_currentBuffer.toBytes().lengthInBytes} / $_bufferSize');
-          _flushBufferToQueue();
+    final currentSound = SoLoud.instance.setBufferStream(
+      maxBufferSize: 1024 * 1024 * 5, // 2 MB
+      sampleRate: 24000,
+      channels: Channels.mono,
+      pcmFormat: BufferPcmType.s16le,
+      onBuffering: (isBuffering, handle, time) async {
+        debugPrint('buffering');
+      },
+    );
+
+    int chunkNumber = 0;
+    BytesBuilder data = BytesBuilder();
+
+    stream.listen((chunk) async {
+      data.add(chunk);
+
+      try {
+        SoLoud.instance.addAudioDataStream(
+          currentSound,
+          chunk,
+          // Uint8List.fromList(decoded),
+        );
+        if (chunkNumber == 0) {
+          await SoLoud.instance.play(currentSound);
         }
-        debugPrint('Last chunk: ${chunk.lengthInBytes / 1024} KB');
-
-        _playNextInQueue();
+        chunkNumber++;
+        print('chunk number: $chunkNumber');
+        print('chunk length: ${chunk.length}');
+      } on SoLoudPcmBufferFullCppException {
+        debugPrint('pcm buffer full or stream already set '
+            'to be ended');
+      } catch (e) {
+        debugPrint(e.toString());
       }
-      _flushBufferToQueue(finalFlush: true);
-    } catch (e) {
-      debugPrint('Error fetching audio: $e');
-    }
-  }
+    }, onDone: () {
+      // SoLoud.instance
+      //     .loadMem('path', data.toBytes())
+      //     .then((e) => SoLoud.instance.play(e));
 
-  void _addToBuffer(Uint8List chunk) {
-    _currentBuffer.add(chunk);
-  }
-
-  void _flushBufferToQueue({bool finalFlush = false}) {
-    if (_currentBuffer.isNotEmpty) {
-      _bufferQueue.add(_currentBuffer.toBytes());
-      _currentBuffer.clear();
-    }
-    if (finalFlush) {
-      _playNextInQueue();
-    }
-  }
-
-  Future<void> _playNextInQueue() async {
-    if (_isPlaying || _bufferQueue.isEmpty) return;
-
-    final nextChunk = _bufferQueue.removeFirst();
-    _isPlaying = true;
-
-    try {
-      debugPrint('Playing chunk: ${nextChunk.lengthInBytes / 1024} KB');
-      await _controller?.play(nextChunk);
-    } catch (e) {
-      debugPrint('Error playing chunk: $e');
-    } finally {
-      _isPlaying = false;
-      if (_bufferQueue.isNotEmpty) {
-        _playNextInQueue();
-      }
-    }
+      SoLoud.instance.setDataIsEnded(currentSound);
+    });
   }
 
   @override

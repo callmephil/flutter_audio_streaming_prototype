@@ -18,6 +18,7 @@ class TTSServiceWeb {
       'headers': {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $apiKey',
+        // 'Transfer-Encoding': 'chunked',
       },
       'body': jsonEncode(payload),
     });
@@ -40,5 +41,39 @@ class TTSServiceWeb {
       final chunk = js_util.getProperty(result, 'value');
       yield Uint8List.fromList(List<int>.from(chunk));
     }
+  }
+
+  Future<Uint8List> ttsSync(String url, Map<String, dynamic> payload) async {
+    final options = js_util.jsify({
+      'method': 'POST',
+      'headers': {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiKey',
+      },
+      'body': jsonEncode(payload),
+    });
+
+    final response = await js_util.promiseToFuture(fetchJs(url, options));
+    final status = js_util.getProperty(response, 'status') as int;
+    if (status != 200) {
+      throw Exception('Failed to fetch audio. Status code: $status');
+    }
+
+    final body = js_util.getProperty(response, 'body');
+    final reader = js_util.callMethod(body, 'getReader', []);
+
+    final chunks = <int>[];
+
+    while (true) {
+      final result =
+          await js_util.promiseToFuture(js_util.callMethod(reader, 'read', []));
+      final done = js_util.getProperty(result, 'done') as bool;
+      if (done) break;
+
+      final chunk = js_util.getProperty(result, 'value');
+      chunks.addAll(List<int>.from(chunk));
+    }
+
+    return Uint8List.fromList(chunks);
   }
 }
