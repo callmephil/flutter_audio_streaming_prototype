@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-// import 'package:example/tts_service_web.dart';
-import 'package:example/tts_service_mobile.dart';
+import 'package:example/tts_service_web.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
@@ -42,7 +41,8 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
   }
 
   Future<void> _fetchAndPlayAudio() async {
-    final stream = await TTSServiceMobile(openAIKey).tts(
+    final stream = TTSServiceWeb(openAIKey).tts(
+      'https://api.openai.com/v1/audio',
       {
         'model': 'tts-1',
         'voice': 'alloy',
