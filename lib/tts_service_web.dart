@@ -8,10 +8,10 @@ import 'package:js/js_util.dart' as js_util;
 @JS('fetch')
 external dynamic fetchJs(dynamic url, dynamic options);
 
-class TTSServiceWeb {
+class TTSService {
   final String apiKey;
 
-  TTSServiceWeb(this.apiKey);
+  TTSService(this.apiKey);
 
   Stream<Uint8List> tts(String url, Map<String, dynamic> payload,
       {int chunkSize = 1024 * 32}) async* {
