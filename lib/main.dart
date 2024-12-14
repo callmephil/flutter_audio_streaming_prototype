@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:example/tts_service_all.dart';
+import 'package:example/strings.dart';
+import 'package:example/tts_service_web.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
@@ -41,34 +42,34 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
   }
 
   Future<void> _fetchAndPlayAudio() async {
-    final stream = TTSServiceAll(openAIKey).tts(
+    final stream = TTSServiceWeb(openAIKey).tts(
       'https://api.openai.com/v1/audio/speech',
       {
         'model': 'tts-1',
         'voice': 'alloy',
         'speed': 1,
-        'input': 'Today is a wonderful day to build something people love!',
+        'input': _textController.text,
         'response_format': 'pcm',
         'stream': true,
       },
+      chunkSize: 1024 * 32, // 32kb before speech
     );
 
     currentSound = SoLoud.instance.setBufferStream(
-      maxBufferSize: 1024 * 1024 * 5, // 2 MB
+      maxBufferSize: 1024 * 1024 * 50, // 50 MB
       sampleRate: 24000,
       channels: Channels.mono,
       pcmFormat: BufferPcmType.s16le,
       bufferingTimeNeeds: 0.5,
-      onBuffering: (isBuffering, handle, time) async {
-        debugPrint('buffering');
-      },
+      // onBuffering: (isBuffering, handle, time) async {
+      //   // debugPrint('isBuffering ${[isBuffering, handle, time]}');
+      // },
     );
 
     var chunkNumber = 0;
 
     stream.listen(
       (chunk) async {
-        debugPrint('LISTEN $chunkNumber********** ${chunk.length}');
         try {
           SoLoud.instance.addAudioDataStream(
             currentSound!,
@@ -88,9 +89,14 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
       onDone: () {
         SoLoud.instance.setDataIsEnded(currentSound!);
       },
+      onError: (e) {
+        debugPrint('Error: $e');
+      },
     );
   }
 
+  final TextEditingController _textController =
+      TextEditingController(text: longString);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,20 +105,40 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
       ),
       body: Center(
         child: Column(
-          spacing: 10,
           children: [
-            ElevatedButton(
-              onPressed: _fetchAndPlayAudio,
-              child: const Text('Play Audio'),
+            Expanded(
+              child: SizedBox(
+                width: MediaQuery.sizeOf(context).width * 0.8,
+                child: TextField(
+                  controller: _textController,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter text to convert to audio',
+                  ),
+                  minLines: 1,
+                  maxLines: null,
+                ),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                if (currentSound != null) {
-                  await SoLoud.instance.play(currentSound!);
-                }
-              },
-              child: const Text('Play Last Audio'),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: _fetchAndPlayAudio,
+                  child: const Text('Play Audio'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (currentSound != null) {
+                      await SoLoud.instance.play(currentSound!);
+                    }
+                  },
+                  child: const Text('Play Last Audio'),
+                ),
+              ],
             ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
