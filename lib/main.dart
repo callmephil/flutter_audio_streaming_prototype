@@ -1,7 +1,8 @@
 import 'dart:async';
 
+import 'package:example/buffer_widget.dart';
 import 'package:example/strings.dart';
-import 'package:example/tts_service_web.dart';
+import 'package:example/tts_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
@@ -42,7 +43,7 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
   }
 
   Future<void> _fetchAndPlayAudio() async {
-    final stream = TTSServiceWeb(openAIKey).tts(
+    final stream = TTSService(openAIKey).tts(
       'https://api.openai.com/v1/audio/speech',
       {
         'model': 'tts-1',
@@ -77,6 +78,10 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
           );
           if (chunkNumber == 0) {
             await SoLoud.instance.play(currentSound!);
+            // To display the BufferWidget
+            if (context.mounted) {
+              setState(() {});
+            }
           }
           chunkNumber++;
         } on SoLoudPcmBufferFullCppException {
@@ -138,6 +143,7 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
                 ),
               ],
             ),
+            BufferBar(sound: currentSound),
             const SizedBox(height: 24),
           ],
         ),

@@ -5,12 +5,13 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-class TTSServiceAll {
-  TTSServiceAll(this.apiKey);
-
+class TTSService {
   final String apiKey;
 
-  Stream<Uint8List> tts(String url, Map<String, dynamic> payload) async* {
+  TTSService(this.apiKey);
+
+  Stream<Uint8List> tts(String url, Map<String, dynamic> payload,
+      {int chunkSize = 1024 * 32}) async* {
     final payloadData = utf8.encode(jsonEncode(payload));
     // Create a StreamedRequest for chunked streaming
     final request = http.StreamedRequest('POST', Uri.parse(url))
