@@ -98,8 +98,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: main
-      resolved-ref: "5303435ce7ce5a3fdba6b564e62a81c953bd9e49"
+      ref: opus
+      resolved-ref: "3f8eacdedad9c91016a7e24c3df10d50b73f842c"
       url: "git@github.com:alnitak/flutter_soloud.git"
     source: git
     version: "2.1.8"

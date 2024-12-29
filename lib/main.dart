@@ -50,7 +50,7 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
         'voice': 'alloy',
         'speed': 1,
         'input': _textController.text,
-        'response_format': 'pcm',
+        'response_format': 'opus',
         'stream': true,
       },
       chunkSize: 1024 * 32, // 32kb before speech
@@ -60,7 +60,7 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
       maxBufferSize: 1024 * 1024 * 50, // 50 MB
       sampleRate: 24000,
       channels: Channels.mono,
-      pcmFormat: BufferPcmType.s16le,
+      format: BufferType.opus,
       bufferingTimeNeeds: 0.5,
       // onBuffering: (isBuffering, handle, time) async {
       //   // debugPrint('isBuffering ${[isBuffering, handle, time]}');
