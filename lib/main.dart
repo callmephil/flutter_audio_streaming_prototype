@@ -56,9 +56,12 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
     _streamSubscription?.cancel();
     _streamSubscription = null;
     _ttsService.cancel();
+    if (currentSound != null) {
     SoLoud.instance.disposeSource(currentSound!);
+    }
 
     setState(() {
+      currentSound = null;
       _isPlaying = false;
     });
   }
