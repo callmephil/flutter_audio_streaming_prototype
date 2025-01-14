@@ -48,11 +48,11 @@ class TTSServiceMobile {
       );
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) {
-        debugPrint('Request to TTS service was cancelled.');
+        // debugPrint('Request to TTS service was cancelled.');
       }
       rethrow;
     } catch (e) {
-      debugPrint('Error in tts: $e');
+      // debugPrint('Error in tts: $e');
       return Future.error(e);
     }
   }

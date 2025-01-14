@@ -11,30 +11,30 @@
 
 //   Future<void> play(Uint8List bytes) async {
 //     try {
-//       debugPrint('Playing audio... ${_audioPlayer.state}');
+//       // debugPrint('Playing audio... ${_audioPlayer.state}');
 //       if (_audioPlayer.state == PlayerState.playing) {
 //         try {
 //           await _audioPlayer.stop();
-//           debugPrint('Audio stopped successfully.');
+//           // debugPrint('Audio stopped successfully.');
 //         } catch (e, s) {
-//           debugPrint('Error stopping audio: $e');
+//           // debugPrint('Error stopping audio: $e');
 //           onError(e, s);
 //         }
 //       }
 
 //       try {
 //         await _audioPlayer.setSourceBytes(bytes, mimeType: 'audio/mpeg');
-//         debugPrint('Audio source set successfully.');
+//         // debugPrint('Audio source set successfully.');
 //       } catch (e, s) {
-//         debugPrint('Error setting audio source: $e');
+//         // debugPrint('Error setting audio source: $e');
 //         onError(e, s);
 //       }
 
 //       try {
 //         await _audioPlayer.resume();
-//         debugPrint('Audio resumed successfully.');
+//         // debugPrint('Audio resumed successfully.');
 //       } catch (e, s) {
-//         debugPrint('Error resuming audio: $e');
+//         // debugPrint('Error resuming audio: $e');
 //         onError(e, s);
 //       }
 
@@ -45,13 +45,13 @@
 //           break;
 //         }
 
-//         debugPrint('Audio playback completed.');
+//         // debugPrint('Audio playback completed.');
 //       } catch (e, s) {
-//         debugPrint('Error waiting for audio completion: $e');
+//         // debugPrint('Error waiting for audio completion: $e');
 //         onError(e, s);
 //       }
 //     } catch (e, s) {
-//       debugPrint('Unexpected error: $e');
+//       // debugPrint('Unexpected error: $e');
 //       onError(e, s);
 //     }
 //   }
@@ -61,7 +61,7 @@
 //     try {
 //       _audioPlayer.dispose();
 //     } catch (e, s) {
-//       debugPrint('Error disposing AudioController: $e');
+//       // debugPrint('Error disposing AudioController: $e');
 //       onError(e, s);
 //     }
 //   }

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:js/js.dart';
 import 'package:js/js_util.dart' as js_util;
 
@@ -52,12 +51,12 @@ class TTSService {
       final chunk = js_util.getProperty(result, 'value');
       buffer.add(List<int>.from(chunk));
       count++;
-      debugPrint('YIELD count: $count  buffer: ${buffer.length} bytes');
+      // debugPrint('YIELD count: $count  buffer: ${buffer.length} bytes');
 
       while (buffer.length >= chunkSize) {
         final bufferBytes = buffer.toBytes();
         final chunk = Uint8List.sublistView(bufferBytes, 0, chunkSize);
-        // debugPrint('Chunk: ${chunk.length} bytes');
+        // // debugPrint('Chunk: ${chunk.length} bytes');
         yield chunk;
 
         remainder = Uint8List.sublistView(bufferBytes, chunkSize);

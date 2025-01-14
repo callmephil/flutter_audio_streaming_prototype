@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:example/buffer_widget.dart';
 import 'package:example/strings.dart';
 import 'package:example/tts_service.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +32,7 @@ class AudioStreamScreen extends StatefulWidget {
 }
 
 class _AudioStreamScreenState extends State<AudioStreamScreen> {
-  final openAIKey = 'YOUR API KEY';
+  final openAIKey = 'API KEY HERE';
   AudioSource? currentSound;
 
   @override
@@ -42,7 +41,10 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
     super.dispose();
   }
 
+  final Stopwatch _stopwatch = Stopwatch();
+
   Future<void> _fetchAndPlayAudio() async {
+    _stopwatch.start();
     final stream = TTSService(openAIKey).tts(
       'https://api.openai.com/v1/audio/speech',
       {
@@ -53,7 +55,7 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
         'response_format': 'opus',
         'stream': true,
       },
-      chunkSize: 1024 * 32, // 32kb before speech
+      chunkSize: 1024 * 2, // 32kb before speech
     );
 
     currentSound = SoLoud.instance.setBufferStream(
@@ -63,12 +65,14 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
       format: BufferType.opus,
       bufferingTimeNeeds: 0.5,
       // onBuffering: (isBuffering, handle, time) async {
-      //   // debugPrint('isBuffering ${[isBuffering, handle, time]}');
+      //   // // debugPrint('isBuffering ${[isBuffering, handle, time]}');
       // },
     );
+    debugPrint(_stopwatch.elapsed.inSeconds.toString());
+
+    _stopwatch.reset();
 
     var chunkNumber = 0;
-
     stream.listen(
       (chunk) async {
         try {
@@ -85,8 +89,7 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
           }
           chunkNumber++;
         } on SoLoudPcmBufferFullCppException {
-          debugPrint('pcm buffer full or stream already set '
-              'to be ended');
+          debugPrint('pcm buffer full or stream already set to be ended');
         } catch (e) {
           debugPrint(e.toString());
         }
@@ -143,7 +146,7 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
                 ),
               ],
             ),
-            BufferBar(sound: currentSound),
+            // BufferBar(sound: currentSound),
             const SizedBox(height: 24),
           ],
         ),

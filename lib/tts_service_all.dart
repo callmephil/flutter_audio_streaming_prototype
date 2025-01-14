@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class TTSService {
@@ -25,7 +24,7 @@ class TTSService {
       request.sink.add(payloadData);
       unawaited(request.sink.close());
     } catch (e) {
-      debugPrint('Error during request setup: $e');
+      // debugPrint('Error during request setup: $e');
       rethrow;
     }
 
@@ -45,16 +44,17 @@ class TTSService {
     var remainder = Uint8List(0);
     const chunkSize = 1024 * 2; // 2 KB of audio data
     var count = 0;
+
     // Read and yield chunks from the response stream
     await for (final chunk in response.stream) {
       buffer.add(chunk);
       count++;
-      debugPrint('YIELD count: $count  buffer: ${buffer.length} bytes');
+      // debugPrint('YIELD count: $count  buffer: ${buffer.length} bytes');
 
       while (buffer.length >= chunkSize) {
         final bufferBytes = buffer.toBytes();
         final chunk = Uint8List.sublistView(bufferBytes, 0, chunkSize);
-        debugPrint('Chunk: ${chunk.length} bytes');
+        // debugPrint('Chunk: ${chunk.length} bytes');
         yield chunk;
 
         remainder = Uint8List.sublistView(bufferBytes, chunkSize);
