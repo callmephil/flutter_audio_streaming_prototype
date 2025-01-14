@@ -34,7 +34,7 @@ class AudioStreamScreen extends StatefulWidget {
 }
 
 class _AudioStreamScreenState extends State<AudioStreamScreen> {
-  static const openAIKey = 'YOUR_API_KEY_HERE';
+  static const openAIKey = '';
   AudioSource? currentSound;
   // TODO: Build is not working yet on web but later we can turn that off to swap between pcm and opus for testing.
   bool get usePCM => kIsWeb;
