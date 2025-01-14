@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:example/extensions/stream_chunking_extension.dart';
+import 'package:example/services/tts_service.dart';
 import 'package:example/strings.dart';
-import 'package:example/tts_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
@@ -32,8 +34,10 @@ class AudioStreamScreen extends StatefulWidget {
 }
 
 class _AudioStreamScreenState extends State<AudioStreamScreen> {
-  final openAIKey = 'API KEY HERE';
+  static const openAIKey = 'YOUR_API_KEY_HERE';
   AudioSource? currentSound;
+  // TODO: Build is not working yet on web but later we can turn that off to swap between pcm and opus for testing.
+  bool get usePCM => kIsWeb;
 
   @override
   void dispose() {
@@ -43,37 +47,64 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
 
   final Stopwatch _stopwatch = Stopwatch();
 
+  bool _isPlaying = false;
+
+  final _ttsService = TTSService(openAIKey);
+  StreamSubscription<Uint8List>? _streamSubscription;
+
+  void _cancel() {
+    _streamSubscription?.cancel();
+    _streamSubscription = null;
+    _ttsService.cancel();
+    SoLoud.instance.disposeSource(currentSound!);
+
+    setState(() {
+      _isPlaying = false;
+    });
+  }
+
   Future<void> _fetchAndPlayAudio() async {
+    if (_isPlaying) {
+      _cancel();
+      return;
+    }
     _stopwatch.start();
-    final stream = TTSService(openAIKey).tts(
+
+    Stream<Uint8List> stream = _ttsService.tts(
       'https://api.openai.com/v1/audio/speech',
       {
         'model': 'tts-1',
         'voice': 'alloy',
         'speed': 1,
         'input': _textController.text,
-        'response_format': 'opus',
+        'response_format': usePCM ? 'pcm' : 'opus',
         'stream': true,
       },
-      chunkSize: 1024 * 2, // 32kb before speech
     );
+
+    if (usePCM) {
+      stream = stream.chunked(1024 * 2);
+    }
 
     currentSound = SoLoud.instance.setBufferStream(
       maxBufferSize: 1024 * 1024 * 50, // 50 MB
       sampleRate: 24000,
       channels: Channels.mono,
-      format: BufferType.opus,
+      format: usePCM ? BufferType.s16le : BufferType.opus,
       bufferingTimeNeeds: 0.5,
       // onBuffering: (isBuffering, handle, time) async {
       //   // // debugPrint('isBuffering ${[isBuffering, handle, time]}');
       // },
     );
-    debugPrint(_stopwatch.elapsed.inSeconds.toString());
+    debugPrint('elapsed time: ${_stopwatch.elapsed.inSeconds}');
 
     _stopwatch.reset();
 
     var chunkNumber = 0;
-    stream.listen(
+
+    _isPlaying = true;
+
+    _streamSubscription = stream.listen(
       (chunk) async {
         try {
           SoLoud.instance.addAudioDataStream(
@@ -96,8 +127,10 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
       },
       onDone: () {
         SoLoud.instance.setDataIsEnded(currentSound!);
+        _isPlaying = false;
       },
       onError: (e) {
+        _isPlaying = false;
         debugPrint('Error: $e');
       },
     );
@@ -133,7 +166,9 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
               children: [
                 ElevatedButton(
                   onPressed: _fetchAndPlayAudio,
-                  child: const Text('Play Audio'),
+                  child: _isPlaying
+                      ? const Text('Cancel...')
+                      : const Text('Play Audio'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
@@ -146,6 +181,7 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
                 ),
               ],
             ),
+            // TODO: this is broken, will fix later
             // BufferBar(sound: currentSound),
             const SizedBox(height: 24),
           ],
