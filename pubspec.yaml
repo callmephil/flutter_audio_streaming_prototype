@@ -38,7 +38,7 @@ dependencies:
   flutter_soloud:
     git:
       url: git@github.com:alnitak/flutter_soloud.git
-      ref: main
+      ref: opus
   dio: ^5.7.0
 
 dev_dependencies:
