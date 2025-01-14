@@ -68,6 +68,7 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
       _cancel();
       return;
     }
+    _stopwatch.reset();
     _stopwatch.start();
 
     Stream<Uint8List> stream = _ttsService.tts(
@@ -92,16 +93,10 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
       channels: Channels.mono,
       format: usePCM ? BufferType.s16le : BufferType.opus,
       bufferingTimeNeeds: 0.5,
-      // onBuffering: (isBuffering, handle, time) async {
-      //   // // debugPrint('isBuffering ${[isBuffering, handle, time]}');
-      // },
     );
-    debugPrint('elapsed time: ${_stopwatch.elapsed.inSeconds}');
-
-    _stopwatch.reset();
+    debugPrint('Setup time: ${_stopwatch.elapsed.inMilliseconds}ms');
 
     var chunkNumber = 0;
-
     _isPlaying = true;
 
     _streamSubscription = stream.listen(
@@ -112,8 +107,9 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
             chunk,
           );
           if (chunkNumber == 0) {
+            debugPrint(
+                'Time to first chunk: ${_stopwatch.elapsed.inMilliseconds}ms');
             await SoLoud.instance.play(currentSound!);
-            // To display the BufferWidget
             if (context.mounted) {
               setState(() {});
             }
