@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:example/extensions/stream_chunking_extension.dart';
+import 'package:example/services/tts_service.dart';
 import 'package:example/strings.dart';
-import 'package:example/tts_service_web.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
@@ -32,8 +34,10 @@ class AudioStreamScreen extends StatefulWidget {
 }
 
 class _AudioStreamScreenState extends State<AudioStreamScreen> {
-  final openAIKey = 'YOUR API KEY';
+  static const openAIKey = '';
   AudioSource? currentSound;
+  // TODO: Build is not working yet on web but later we can turn that off to swap between pcm and opus for testing.
+  bool get usePCM => kIsWeb;
 
   @override
   void dispose() {
@@ -41,34 +45,64 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
     super.dispose();
   }
 
+  final Stopwatch _stopwatch = Stopwatch();
+
+  bool _isPlaying = false;
+
+  final _ttsService = TTSService(openAIKey);
+  StreamSubscription<Uint8List>? _streamSubscription;
+
+  void _cancel() {
+    _streamSubscription?.cancel();
+    _streamSubscription = null;
+    _ttsService.cancel();
+    if (currentSound != null) {
+    SoLoud.instance.disposeSource(currentSound!);
+    }
+
+    setState(() {
+      currentSound = null;
+      _isPlaying = false;
+    });
+  }
+
   Future<void> _fetchAndPlayAudio() async {
-    final stream = TTSServiceWeb(openAIKey).tts(
+    if (_isPlaying) {
+      _cancel();
+      return;
+    }
+    _stopwatch.reset();
+    _stopwatch.start();
+
+    Stream<Uint8List> stream = _ttsService.tts(
       'https://api.openai.com/v1/audio/speech',
       {
         'model': 'tts-1',
         'voice': 'alloy',
         'speed': 1,
         'input': _textController.text,
-        'response_format': 'pcm',
+        'response_format': usePCM ? 'pcm' : 'opus',
         'stream': true,
       },
-      chunkSize: 1024 * 32, // 32kb before speech
     );
+
+    if (usePCM) {
+      stream = stream.chunked(1024 * 2);
+    }
 
     currentSound = SoLoud.instance.setBufferStream(
       maxBufferSize: 1024 * 1024 * 50, // 50 MB
       sampleRate: 24000,
       channels: Channels.mono,
-      pcmFormat: BufferPcmType.s16le,
+      format: usePCM ? BufferType.s16le : BufferType.opus,
       bufferingTimeNeeds: 0.5,
-      // onBuffering: (isBuffering, handle, time) async {
-      //   // debugPrint('isBuffering ${[isBuffering, handle, time]}');
-      // },
     );
+    debugPrint('Setup time: ${_stopwatch.elapsed.inMilliseconds}ms');
 
     var chunkNumber = 0;
+    _isPlaying = true;
 
-    stream.listen(
+    _streamSubscription = stream.listen(
       (chunk) async {
         try {
           SoLoud.instance.addAudioDataStream(
@@ -76,20 +110,26 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
             chunk,
           );
           if (chunkNumber == 0) {
+            debugPrint(
+                'Time to first chunk: ${_stopwatch.elapsed.inMilliseconds}ms');
             await SoLoud.instance.play(currentSound!);
+            if (context.mounted) {
+              setState(() {});
+            }
           }
           chunkNumber++;
         } on SoLoudPcmBufferFullCppException {
-          debugPrint('pcm buffer full or stream already set '
-              'to be ended');
+          debugPrint('pcm buffer full or stream already set to be ended');
         } catch (e) {
           debugPrint(e.toString());
         }
       },
       onDone: () {
         SoLoud.instance.setDataIsEnded(currentSound!);
+        _isPlaying = false;
       },
       onError: (e) {
+        _isPlaying = false;
         debugPrint('Error: $e');
       },
     );
@@ -125,7 +165,9 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
               children: [
                 ElevatedButton(
                   onPressed: _fetchAndPlayAudio,
-                  child: const Text('Play Audio'),
+                  child: _isPlaying
+                      ? const Text('Cancel...')
+                      : const Text('Play Audio'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
@@ -138,6 +180,8 @@ class _AudioStreamScreenState extends State<AudioStreamScreen> {
                 ),
               ],
             ),
+            // TODO: this is broken, will fix later
+            // BufferBar(sound: currentSound),
             const SizedBox(height: 24),
           ],
         ),
